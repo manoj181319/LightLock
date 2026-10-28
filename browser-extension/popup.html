@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=320, initial-scale=1.0">
+    <title>LightLock</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0A0F14;
+            --paper: #F8F9FA;
+            --signal: #00D4AA;
+            --signal-dim: #00D4AA22;
+            --noise: #E8ECEF;
+            --noise-strong: #CED4DA;
+            --warning: #F5A623;
+            --danger: #E03E3E;
+            --bg: var(--paper);
+            --bg-elevated: #FFFFFF;
+            --text: var(--ink);
+            --text-secondary: rgba(10,15,20,0.6);
+            --border: var(--noise);
+            --border-focus: var(--signal);
+            --shadow-1: 0 1px 2px rgba(10,15,20,0.06);
+            --shadow-2: 0 4px 8px rgba(10,15,20,0.08);
+            --shadow-signal: 0 0 0 1px #00D4AA, 0 0 16px #00D4AA44;
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+            --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+            --space-5: 20px; --space-6: 24px; --space-8: 32px;
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-ui: 'Inter', system-ui, sans-serif;
+            --duration-fast: 120ms; --duration-base: 200ms; --duration-slow: 350ms;
+            --ease: cubic-bezier(0.2, 0, 0.38, 0.9);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --ink: #E8ECF1;
+                --paper: #0D1117;
+                --signal-dim: #00D4AA33;
+                --noise: #2D333B;
+                --noise-strong: #484F58;
+                --bg-elevated: #161B22;
+                --text: var(--ink);
+                --text-secondary: rgba(232,236,241,0.6);
+                --border: var(--noise);
+                --bg: var(--paper);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            width: 320px;
+            font-family: var(--font-ui);
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text);
+            background: var(--bg);
+            padding: var(--space-4);
+        }
+
+        /* ── Header ─────────────────────────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-5);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        .logo-mark {
+            width: 28px; height: 28px;
+            background: var(--signal);
+            border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 14px; color: var(--ink);
+        }
+        .status-indicator {
+            display: flex; align-items: center; gap: var(--space-2);
+            font-size: 12px; color: var(--text-secondary);
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--noise-strong);
+            transition: background-color var(--duration-base) var(--ease),
+                        box-shadow var(--duration-base) var(--ease);
+        }
+        .status-dot.active { background: var(--signal); box-shadow: 0 0 8px var(--signal); }
+        .status-dot.warning { background: var(--warning); }
+        .status-dot.error { background: var(--danger); }
+
+        /* ── Camera ──────────────────────────────────────────────────────────── */
+        .camera-section { margin-bottom: var(--space-4); }
+        .camera-container {
+            aspect-ratio: 4/3;
+            background: var(--ink);
+            border-radius: var(--radius-lg);
+            overflow: hidden; position: relative;
+            box-shadow: var(--shadow-2);
+        }
+        .camera-preview {
+            width: 100%; height: 100%; object-fit: cover; display: none;
+        }
+        .camera-preview.active { display: block; }
+        .camera-placeholder {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: var(--space-3); color: var(--text-secondary); font-size: 13px;
+        }
+        .camera-placeholder.hidden { display: none; }
+        .camera-placeholder svg { width: 40px; height: 40px; opacity: 0.5; }
+
+        /* ── Waveform ─────────────────────────────────────────────────────────── */
+        .waveform-overlay {
+            position: absolute; inset: 0; pointer-events: none;
+            display: flex; align-items: flex-end; justify-content: space-between;
+            padding: var(--space-2) var(--space-3);
+            font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary);
+        }
+        .waveform-label { opacity: 0.7; }
+        .waveform-threshold {
+            position: absolute; left: 0; right: 0; height: 1px;
+            background: repeating-linear-gradient(90deg,var(--warning),var(--warning) 4px,transparent 4px,transparent 8px);
+            opacity: 0.5;
+        }
+
+        /* ── QR section ───────────────────────────────────────────────────────── */
+        .qr-section { margin-bottom: var(--space-4); }
+        .qr-container {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: var(--space-2);
+            text-align: center;
+            box-shadow: var(--shadow-1);
+        }
+        .qr-code {
+            width: 264px; height: 264px;
+            margin: 0 auto var(--space-2);
+            background: white;
+            border-radius: var(--radius-sm);
+            display: block;
+        }
+        .qr-status {
+            font-size: 13px; color: var(--text-secondary); min-height: 20px;
+        }
+        .qr-status.active { color: var(--signal); font-weight: 500; }
+
+        /* ── Credential result panel ─────────────────────────────────────────── */
+        .credential-section { margin-bottom: var(--space-4); }
+        .credential-card {
+            background: var(--bg-elevated);
+            border: 2px solid var(--signal);
+            border-radius: var(--radius-lg);
+            padding: var(--space-4);
+            box-shadow: var(--shadow-signal);
+            animation: fadeSlideIn var(--duration-slow) var(--ease);
+        }
+
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .credential-header {
+            display: flex; align-items: center; gap: var(--space-2);
+            margin-bottom: var(--space-3);
+        }
+        .credential-check {
+            width: 20px; height: 20px; border-radius: 50%;
+            background: var(--signal); color: var(--ink);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; flex-shrink: 0;
+        }
+        .credential-title {
+            font-size: 13px; font-weight: 600;
+            letter-spacing: 0.05em; text-transform: uppercase;
+            color: var(--signal);
+            flex: 1;
+        }
+        .credential-time {
+            font-family: var(--font-mono); font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* The password display box */
+        .credential-value-wrap { position: relative; }
+        .credential-value {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            line-height: 1.5;
+            word-break: break-all;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3);
+            padding-right: 44px; /* room for copy button */
+            user-select: all;
+            cursor: text;
+            color: var(--text);
+        }
+        .copy-btn {
+            position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+            width: 32px; height: 32px; border-radius: var(--radius-sm);
+            border: none; background: var(--signal);
+            color: var(--ink); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow var(--duration-fast) var(--ease);
+        }
+        .copy-btn:hover { box-shadow: var(--shadow-signal); }
+        .copy-btn svg { width: 14px; height: 14px; }
+
+        .credential-meta {
+            display: flex; gap: var(--space-4); margin-top: var(--space-3);
+            font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);
+        }
+        .meta-item { display: flex; align-items: center; gap: var(--space-1); }
+        .meta-verified { color: var(--signal); }
+        .meta-unverified { color: var(--warning); }
+
+        .copy-hint {
+            margin-top: var(--space-2);
+            font-size: 11px; color: var(--text-secondary);
+            text-align: center;
+        }
+        .copy-hint.copied { color: var(--signal); font-weight: 500; }
+
+        /* Dismiss button */
+        .dismiss-btn {
+            width: 100%; margin-top: var(--space-3);
+            padding: var(--space-2) 0;
+            background: transparent; border: 1px solid var(--border);
+            border-radius: var(--radius-sm); cursor: pointer;
+            font-size: 12px; color: var(--text-secondary);
+            transition: border-color var(--duration-fast), color var(--duration-fast);
+        }
+        .dismiss-btn:hover { border-color: var(--noise-strong); color: var(--text); }
+
+        /* ── Controls ─────────────────────────────────────────────────────────── */
+        .controls { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); }
+        .btn {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            gap: var(--space-2); padding: 12px 20px;
+            font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+            border: none; border-radius: var(--radius-sm); cursor: pointer;
+            transition: transform var(--duration-fast) var(--ease),
+                        box-shadow var(--duration-fast) var(--ease);
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn:not(:disabled):hover { transform: translateY(-1px); }
+        .btn:not(:disabled):active { transform: translateY(0); }
+        .btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--border-focus); }
+        .btn-primary { background: var(--signal); color: var(--ink); }
+        .btn-primary:not(:disabled):hover { box-shadow: var(--shadow-signal); }
+        .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--noise-strong); }
+        .btn-secondary:not(:disabled):hover { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+        .btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* ── Frame Log ────────────────────────────────────────────────────────── */
+        .log-section {
+            background: var(--bg-elevated); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-1); overflow: hidden;
+        }
+        .log-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: var(--space-3) var(--space-4);
+            border-bottom: 1px solid var(--border); background: var(--bg);
+        }
+        .log-title {
+            font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
+            text-transform: uppercase; color: var(--text-secondary);
+        }
+        .log-toggle {
+            background: none; border: none; color: var(--text-secondary);
+            cursor: pointer; padding: var(--space-1); border-radius: var(--radius-sm);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .log-toggle:hover { color: var(--signal); }
+        .log-toggle svg { width: 16px; height: 16px; transition: transform var(--duration-base) var(--ease); }
+        .log-toggle.expanded svg { transform: rotate(180deg); }
+        .log-content {
+            max-height: 160px; overflow-y: auto;
+            transition: max-height var(--duration-slow) var(--ease);
+        }
+        .log-content.collapsed { max-height: 0; }
+        .log-entry {
+            display: flex; gap: var(--space-3);
+            padding: var(--space-2) var(--space-4);
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-mono); font-size: 11px; line-height: 1.4;
+        }
+        .log-entry:last-child { border-bottom: none; }
+        .log-time { color: var(--text-secondary); white-space: nowrap; flex-shrink: 0; }
+        .log-message { flex: 1; color: var(--text); word-break: break-word; }
+        .log-message.success { color: var(--signal); }
+        .log-message.warning { color: var(--warning); }
+        .log-message.error { color: var(--danger); }
+        .log-empty {
+            padding: var(--space-4); text-align: center;
+            color: var(--text-secondary); font-size: 12px;
+        }
+
+        .hidden { display: none !important; }
+
+        .log-content::-webkit-scrollbar { width: 6px; }
+        .log-content::-webkit-scrollbar-track { background: transparent; }
+        .log-content::-webkit-scrollbar-thumb { background: var(--noise-strong); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-mark" aria-hidden="true">◈</div>
+            LightLock
+        </div>
+        <div class="status-indicator">
+            <div id="statusDot" class="status-dot" aria-hidden="true"></div>
+            <span id="statusText">Idle</span>
+        </div>
+    </header>
+
+    <!-- Camera feed -->
+    <section class="camera-section" aria-label="Camera feed">
+        <div class="camera-container">
+            <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+            <div id="cameraPlaceholder" class="camera-placeholder" role="status" aria-live="polite">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                </svg>
+                <span>Camera off</span>
+            </div>
+            <canvas id="waveformCanvas" class="hidden" aria-hidden="true" style="position:absolute;bottom:0;left:0;right:0;height:60px;background:rgba(10,15,20,0.85);border-top:1px solid rgba(255,255,255,0.08);width:100%;display:block;"></canvas>
+            <div class="waveform-overlay" aria-hidden="true">
+                <span class="waveform-label">0s</span>
+                <span class="waveform-label">10s</span>
+            </div>
+            <div class="waveform-threshold" aria-hidden="true"></div>
+        </div>
+    </section>
+
+    <!-- QR challenge -->
+    <section id="qrSection" class="qr-section hidden" aria-label="QR code challenge">
+        <div class="qr-container">
+            <canvas id="qrCode" class="qr-code" role="img" aria-label="Challenge QR code" width="264" height="264"></canvas>
+            <div id="qrStatus" class="qr-status">Generating challenge…</div>
+        </div>
+    </section>
+
+    <!-- ✅ Received credential result — shown after successful OOK reception -->
+    <section id="credentialSection" class="credential-section hidden" aria-label="Received credential" aria-live="polite">
+        <div class="credential-card" id="credentialCard">
+            <div class="credential-header">
+                <div class="credential-check" aria-hidden="true">✓</div>
+                <span class="credential-title">Credential Received</span>
+                <span class="credential-time" id="credentialTime"></span>
+            </div>
+
+            <div class="credential-value-wrap">
+                <div id="credentialValue" class="credential-value" role="textbox" aria-readonly="true" tabindex="0"></div>
+                <button class="copy-btn" id="copyBtn" title="Copy to clipboard" aria-label="Copy credential to clipboard">
+                    <svg id="copyIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="credential-meta">
+                <div class="meta-item">
+                    <span>HMAC:</span>
+                    <span id="credentialVerified" class="meta-verified">verified ✓</span>
+                </div>
+                <div class="meta-item">
+                    <span>Decrypted:</span>
+                    <span id="credentialDecrypted" class="meta-verified">yes ✓</span>
+                </div>
+            </div>
+            <p class="copy-hint" id="copyHint">Click the green button or select all &amp; copy, then paste into the password field</p>
+            <button class="dismiss-btn" id="dismissBtn">Dismiss &amp; scan next</button>
+        </div>
+    </section>
+
+    <!-- Start / Stop controls -->
+    <div class="controls">
+        <button id="startBtn" class="btn btn-primary" aria-label="Start scanning for optical signal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+            <span>Start Scan</span>
+        </button>
+        <button id="stopBtn" class="btn btn-secondary" disabled aria-label="Stop scanning">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="2"/>
+            </svg>
+            <span>Stop Scan</span>
+        </button>
+    </div>
+
+    <!-- Frame log -->
+    <section class="log-section" aria-label="Frame reception log">
+        <div class="log-header">
+            <span class="log-title">Frame Log</span>
+            <button id="logToggle" class="log-toggle" aria-label="Toggle log" aria-expanded="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+        </div>
+        <div id="logContent" class="log-content" role="log" aria-live="polite" aria-atomic="false">
+            <div class="log-empty">No frames received yet</div>
+        </div>
+    </section>
+
+    <script src="qrious.min.js"></script>
+    <script src="binary-protocol-translator.js"></script>
+    <script src="crypto-manager.js"></script>
+    <script src="challenge-manager.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

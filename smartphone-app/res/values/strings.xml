@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">LightLock</string>
+    <string name="home_title">LightLock Secure Transfer</string>
+    <string name="password_transmission">Password Transmission</string>
+    <string name="password_vault">Password Vault</string>
+    <string name="start_transmission">Start Transmission</string>
+    <string name="stop_transmission">Stop Transmission</string>
+    <string name="waiting_for_challenge">Waiting for challenge...</string>
+    <string name="challenge_received">Challenge received! Prepare to receive password in 6 seconds...</string>
+    <string name="transmitting_password">Transmitting password...</string>
+    <string name="transmission_complete">Transmission complete!</string>
+    <string name="add_password">Add Password</string>
+    <string name="view_passwords">View Passwords</string>
+    <string name="password_label">Password Label:</string>
+    <string name="password_field">Password:</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_passwords">No passwords saved</string>
+    <string name="password">Password</string>
+    <string name="label">Label</string>
+    <string name="actions">Actions</string>
+    <string name="delete">Delete</string>
+    <string name="confirm_delete">Are you sure you want to delete this password?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+</resources>
